@@ -7,8 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-
-	"playground"
 )
 
 type LogLevel int
