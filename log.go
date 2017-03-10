@@ -47,12 +47,12 @@ func SetQuiet(isQuiet bool) {
 func SetLogFile(fileName string) {
 	var err error
 	if fileName, err = filepath.Abs(fileName); err != nil {
-		msg := "-log value '"+fileName+"' does not resolve"
+		msg := "-log value '" + fileName + "' does not resolve"
 		Error("log.SetLogFile", msg, err)
 		panic(msg)
 	}
 	if stat, err := os.Stat(fileName); (err != nil && !os.IsNotExist(err)) || (stat != nil && stat.IsDir()) {
-    msg := "-log value '"+fileName+"' does not stat or is a directory"
+		msg := "-log value '" + fileName + "' does not stat or is a directory"
 		Error("log.SetLogFile", msg, err)
 		panic(msg)
 	}
