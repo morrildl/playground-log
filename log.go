@@ -19,6 +19,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/coreos/go-systemd/journal"
 )
 
 type LogLevel int
@@ -33,6 +35,7 @@ const (
 var currentLevel LogLevel = LEVEL_STATUS
 var quietLog = false
 var logger *log.Logger
+var useSystemd = false
 
 func init() {
 	logger = log.New(os.Stdout, "", log.LstdFlags)
@@ -57,6 +60,10 @@ func SetQuiet(isQuiet bool) {
 }
 
 func SetLogFile(fileName string) {
+	if fileName == "systemd" {
+		useSystemd = true
+		return
+	}
 	var err error
 	if fileName, err = filepath.Abs(fileName); err != nil {
 		msg := "-log value '" + fileName + "' does not resolve"
@@ -93,6 +100,28 @@ func doLog(level LogLevel, component string, extras ...interface{}) {
 		levelString = "ERROR"
 		Warn("Logger", "called with invalid level ", level)
 	}
+
+	if useSystemd {
+		var message string
+		if _, ok := extras[0].(string); ok {
+			message = fmt.Sprintf("(%s) %s ", component, extras[0])
+			extras = extras[1:]
+		} else {
+			message = fmt.Sprintf("(%s) ", component)
+		}
+		pri, ok := map[LogLevel]journal.Priority{
+			LEVEL_DEBUG:   journal.PriDebug,
+			LEVEL_ERROR:   journal.PriErr,
+			LEVEL_STATUS:  journal.PriNotice,
+			LEVEL_WARNING: journal.PriWarning,
+		}[level]
+		if !ok {
+			pri = journal.PriErr
+		}
+		journal.Print(pri, message, extras...)
+		return
+	}
+
 	var message string
 	if _, ok := extras[0].(string); ok {
 		if quietLog {
@@ -116,12 +145,7 @@ func doLog(level LogLevel, component string, extras ...interface{}) {
 			message = fmt.Sprintf("[%s] (%s) ", levelString, component)
 		}
 	}
-	if len(extras) > 0 {
-		extras = append([]interface{}{message}, extras)
-	} else {
-		extras = []interface{}{message}
-	}
-	logger.Print(extras...)
+	logger.Printf(message, extras...)
 }
 
 func Debug(component string, extras ...interface{}) {
