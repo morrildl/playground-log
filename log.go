@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/coreos/go-systemd/journal"
 )
@@ -36,6 +37,7 @@ var currentLevel LogLevel = LEVEL_STATUS
 var quietLog = false
 var logger *log.Logger
 var useSystemd = false
+var systemdID string
 
 func init() {
 	logger = log.New(os.Stdout, "", log.LstdFlags)
@@ -60,8 +62,9 @@ func SetQuiet(isQuiet bool) {
 }
 
 func SetLogFile(fileName string) {
-	if fileName == "systemd" {
+	if strings.HasPrefix(fileName, "systemd:") {
 		useSystemd = true
+		systemdID = fileName[8:]
 		return
 	}
 	var err error
@@ -118,7 +121,8 @@ func doLog(level LogLevel, component string, extras ...interface{}) {
 		if !ok {
 			pri = journal.PriErr
 		}
-		journal.Print(pri, message, extras...)
+		message = fmt.Sprintf(message, extras...)
+		journal.Send(message, pri, map[string]string{"SYSLOG_IDENTIFIER": systemdID})
 		return
 	}
 
